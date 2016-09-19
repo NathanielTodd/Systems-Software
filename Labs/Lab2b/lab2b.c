@@ -33,5 +33,32 @@ int main(int argc, char **argv){
 
 int* search(int* begin, int* end, int needle){
 
-	return NULL;
+   /*Testing corner casess*/
+   if((begin+1)==end){
+      if(begin[0]==needle){
+         return begin;
+      }
+      else if(end[0]==needle){
+         return end;
+      }
+      else{
+         return NULL;
+      }
+   }
+
+   /*setting the offset */
+   int offset = ((end-begin)/2);
+
+   /*ending or recursing*/
+   if(begin[offset]==needle){
+      return begin+offset;
+   }
+   else if(begin[offset]>needle){
+      end = begin + offset;
+      search(begin, end, needle);
+   }
+   else{
+      begin = begin + offset;
+      search(begin, end, needle);
+   }
 }
