@@ -79,7 +79,7 @@ int main(int arg, char **arv){
 	while(play==1){
 
 		printf("Would you like to \"hit\" or \"stand\"? ");
-		scanf("%s",&input);
+		scanf("%s",input);
 		printf("%s\n",input);
 	}
 }
