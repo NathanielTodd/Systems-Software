@@ -1,0 +1,20 @@
+Sample Midterm Answers
+	1. B - string constants, you cannot modify string constants (char[] are strings but can be modified)
+	2. A - multiplying pointers doesn't make sense
+	What's the difference between numerical address and storage location
+	3. D
+	4. C
+	5. D
+	6. Buffering. Printf doesnt do a system call until it encounters a newline or until it is full.
+	7. EASY MONEY
+	8.	i. save memory and time - no need to copy entire structs (whether modifying it or not pass a const or regular pointer)
+		ii. modify input argument variables
+		iii. return multiple values
+	9. 	a. C is pass by value, need to pass a pointer to a pointer
+		b. str is automatic so it will expire after the function is over, therefore you need to declare it static
+	10.	a. 0x200, type is int a[] or int (*p) = a;
+		b. same as above
+		c. 0x20c, second row
+		d. 0x204
+		e. 11
+		f. 20
