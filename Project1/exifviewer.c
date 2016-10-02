@@ -31,53 +31,48 @@ void tagprints(struct tiff *t, FILE *s){
 	char data[t->datanum];
 	fread(data,sizeof(char),t->datanum,s);
 	if(t->id==0x010f) {
-		printf("Manufacturer: %s\n",data);
+		printf("Manufacturer: \t%s\n",data);
 	}
 	else if(t->id==0x0110){
-		printf("Camera Model: %s\n",data);
+		printf("Camera Model: \t%s\n",data);
 	}
 	else if(t->id==0x9003){
-		printf("Date Taken: %s\n",data);
-	}
-}
-
-void tagprint16(struct tiff *t, FILE *s){
-
-	printf ("\n\n%d\n\n",t->offset);
-	char data[t->datanum];
-	fread(data,sizeof(char),t->datanum,s);
-	unsigned short iso = ((data[0]&0xff) <<8 | ((data[1]&0xff) << 0));
-	if(t->id==0x8827) {
-		printf("ISO: ISO %hu\n",iso);
+		printf("Date Taken: \t%s\n",data);
 	}
 }
 
 void tagprint32(struct tiff *t){
 	
 	if(t->id==0xa002) {
-		printf("Width: %u pixels\n",t->offset);
+		printf("Width: \t\t%u pixels\n",t->offset);
 	}
 	else if(t->id==0xa003){
-		printf("Hieight: %u pixels\n",t->offset);
+		printf("Height: \t%u pixels\n",t->offset);
+	}
+	if(t->id==0x8827) {
+		printf("ISO: \t\tISO %d\n",t->offset);
 	}
 }
 
 void tagprintf(struct tiff *t, FILE *s){
 
-	char data[t->datanum];
-	fread(data,sizeof(char),t->datanum,s);
-	if(t->id==0x010f) {
-		printf("Manufacturer: %s\n",data);
+
+	unsigned char data[8];
+	fread(data,sizeof(char),8,s);
+	int data1 = (data[0]&0xff) | ((data[1]&0xff) << 8) | ((data[2]&0xff) << 16) | ((data[3]&0xff) << 24);
+	int data2 = (data[4]&0xff) | ((data[5]&0xff) << 8) | ((data[6]&0xff) << 16) | ((data[7]&0xff) << 24);
+	if(t->id==0x829a) {
+		printf("Exposure: \t%d/%d second\n",data1,data2);
 	}
-	else if(t->id==0x0110){
-		printf("Camera Model: %s\n",data);
+	else if(t->id==0x829d){
+		printf("F-stop: \tf/%.2lf\n",(double)data1/data2);
 	}
-	else if(t->id==0x9003){
-		printf("Date Taken: %s\n",data);
+	else if(t->id==0x920a){
+		printf("Focal Length: \t%d mm\n",data1/data2);
 	}
 }
 
-int main(int arg, char **arv){
+int main(int arg, char **argv){
 
 	FILE *rfile;		//file open jpeg with
 	char verify[20];	//buffer to read file into
@@ -87,7 +82,7 @@ int main(int arg, char **arv){
 	int p;				//position to keep track of file locaion
 	
 	//making sure the file exists
-	if((rfile = fopen("test.jpg","rb"))==NULL){
+	if((rfile = fopen(argv[1],"rb"))==NULL){
 		printf("File not found");
 		return 1;
 	}	
@@ -133,13 +128,11 @@ int main(int arg, char **arv){
 					tagprints(&tag,rfile);
 					break;
 				case 3:
-					//tagprint16(&tag,rfile);
-					break;
 				case 4:
 					tagprint32(&tag);
 					break;
 				case 5:
-					//tagprintf(&tag,rfile);
+					tagprintf(&tag,rfile);
 					break;
 			}
 			fseek(rfile,p,SEEK_SET);
