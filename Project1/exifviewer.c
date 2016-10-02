@@ -1,6 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+* header struct
+* struct for storing the necessary information from the header
+*/
+struct header{
+	unsigned short app;
+	unsigned short end;
+	unsigned int estring;
+};
+
+/*
+* struct for storing each tiff tag
+*/
 struct tiff{
 	unsigned short id;
 	unsigned short type;
@@ -8,10 +21,13 @@ struct tiff{
 	unsigned int offset;
 };
 
-struct tiff tag;
-
+/*
+* function etag - function that evaluates the tag id
+* param t - unsigned short that is the tag id
+* return int - either a 1 or 0. 1 if the id is a tag we're looking for. 0 otherwise.
+*/
 int etag(unsigned short t){
-	if(t==0xa002 || t==0xa003 || t==0x8827 || t==0x829a || t==0x829d || t==0x920a || tag.id==0x010f || tag.id==0x0110 || tag.id==0x9003){
+	if(t==0xa002 || t==0xa003 || t==0x8827 || t==0x829a || t==0x829d || t==0x920a || t==0x010f || t==0x0110 || t==0x9003){
 		return 1;
 	}
 	else{
@@ -19,6 +35,11 @@ int etag(unsigned short t){
 	}
 }
 
+/*
+* function tagread - read the data from the buffer into the struct
+* param *t - pointer to the tag struct to store the info
+* param tb[12] - buffer to extract the data from
+*/
 void tagread(struct tiff *t, char tb[12]){
 	t->id = ((tb[0]&0xff) | ((tb[1]&0xff) << 8));
 	t->type = (tb[2]&0xff) | ((tb[3]&0xff) << 8);
@@ -26,8 +47,23 @@ void tagread(struct tiff *t, char tb[12]){
 	t->offset = (tb[8]&0xff) | ((tb[9]&0xff) << 8) | ((tb[10]&0xff) << 16) | ((tb[11]&0xff) << 24);
 }
 
-void tagprints(struct tiff *t, FILE *s){
+/*
+* function tagreadh - read the data from the header buffer into the header struct
+* param *h - pointer to the header struct to store the info
+* param v[12] - buffer to extract the data from
+*/
+void tagreadh(struct header *h, char v[20]){
+	h->app = ((v[2] & 0xff) << 8) | (v[3] & 0xff);
+	h->end = ((v[12] & 0xff) << 8) | (v[13] & 0xff);
+	h->estring = (v[9]&0xff) | ((v[8]&0xff) << 8) | ((v[7]&0xff) << 16) | ((v[6]&0xff) << 24);
+}
 
+/*
+* function tagprints - prints out data of tag type 2
+* param *t - pointer to the tag struct of tag that will be printed
+* param *s - file to read the data from
+*/
+void tagprints(struct tiff *t, FILE *s){
 	char data[t->datanum];
 	fread(data,sizeof(char),t->datanum,s);
 	if(t->id==0x010f) {
@@ -41,8 +77,11 @@ void tagprints(struct tiff *t, FILE *s){
 	}
 }
 
-void tagprint32(struct tiff *t){
-	
+/*
+* function tagprint34 - prints out data of tag type 3 & 4
+* param *t - pointer to the tag struct of tag that will be printed
+*/
+void tagprint34(struct tiff *t){
 	if(t->id==0xa002) {
 		printf("Width: \t\t%u pixels\n",t->offset);
 	}
@@ -54,9 +93,12 @@ void tagprint32(struct tiff *t){
 	}
 }
 
+/*
+* function tagprintf - prints out data of tag type 5
+* param *t - pointer to the tag struct of tag that will be printed
+* param *s - file to read the data from
+*/
 void tagprintf(struct tiff *t, FILE *s){
-
-
 	unsigned char data[8];
 	fread(data,sizeof(char),8,s);
 	int data1 = (data[0]&0xff) | ((data[1]&0xff) << 8) | ((data[2]&0xff) << 16) | ((data[3]&0xff) << 24);
@@ -74,39 +116,49 @@ void tagprintf(struct tiff *t, FILE *s){
 
 int main(int arg, char **argv){
 
-	FILE *rfile;		//file open jpeg with
-	char verify[20];	//buffer to read file into
-	char tagb[12];		//buffer to read tags
-	short count;		//number of TIFF tags that exist, ID for tiff tags
-	int i;				//for loop counter
-	int p;				//position to keep track of file locaion
+	FILE *rfile;							//file open jpeg with
+	int p;									//p - position variable to keep track of reading locaion
+	short i; short count;					//i - counter for for loops, count - number of tags in file	
+	char tagb[12];	struct tiff tag;		//buffer & struct to read & store tiff tags
+	char headb[20]; struct header head;		//buffer & struct to read & verifying information from header
 	
+
 	//making sure the file exists
 	if((rfile = fopen(argv[1],"rb"))==NULL){
-		printf("File not found");
+		printf("File not found, terminating.\n\n");
 		return 1;
 	}	
 	
-	//reading the first 20 bytes of the file into the buffer
-	fread(verify,sizeof(char),20,rfile);
+	//reading the first 20 bytes of the file into the buffer and filling struct
+	fread(headb,sizeof(char),20,rfile);
+	tagreadh(&head,headb);
 
 	//Verifying that the the file is APP1 and little endian
-	if((verify[2] & 0xff)!=0xff || (verify[3] & 0xff)!=0xe1){
-		printf("APP tag: %x%x\n",verify[2] & 0xff, verify[3] & 0xff);
+	if(head.app!=0xffe1){
 		printf("File is not APP1, terminating\n");
 		return 0;
 	}
 	else{
 		printf("\nFile is APP1.");
 	}
-	if((verify[12] & 0xff)!=0x49 || (verify[13] & 0xff)!=0x49){
-		printf("\nEndian tag: %x%x\n",verify[12] & 0xff, verify[13] & 0xff);
-		printf("File is not little endian, terminating.\n");
+
+	//Verifying Exif String
+	if(head.estring!=0x45786966){
+		printf(" Exif String not located, terminating.\n");
+		return 0;
+	}
+	else{
+		printf(" Exif String Verified.");
+	}
+
+	//Verifying Endian
+	if(head.end!=0x4949){
+		printf(" File is not little endian, terminating.\n");
 		return 0;
 	}
 	else{
 		printf(" File is little endian.\n");
-		printf("-------------------------------------------------------\n\n");
+		printf("-----------------------------------------------------------\n\n");
 	}
 
 	//reading in the count to see how many tiff tags there are.
@@ -118,18 +170,17 @@ int main(int arg, char **argv){
 		//reading and storing the next tiff tag
 		fread(tagb,sizeof(char),12,rfile);
 		tagread(&tag,tagb);
-		//determining if the tag is useful to us
+		//seeking to data and printing if the tag is one we need
 		if(etag(tag.id)==1) {
 			p = ftell(rfile);
 			fseek(rfile,tag.offset+12,SEEK_SET);
-			//printing the tag
 			switch(tag.type){
 				case 2:
 					tagprints(&tag,rfile);
 					break;
 				case 3:
 				case 4:
-					tagprint32(&tag);
+					tagprint34(&tag);
 					break;
 				case 5:
 					tagprintf(&tag,rfile);
